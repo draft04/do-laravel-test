@@ -3,8 +3,8 @@ pipeline {
     agent any
 
     environment {
-        REGISTRY = 'your-registry' // Docker Hub or DOCR
-        IMAGE_NAME = 'hello-laravel'
+        REGISTRY = 'draft04' // Docker Hub or DOCR
+        IMAGE_NAME = 'laravel-test'
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-creds'
         DO_SSH_KEY_ID = 'do-ssh-key'
         DROPLET_IP = 'your-droplet-ip'
