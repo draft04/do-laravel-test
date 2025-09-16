@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
     tools {
@@ -25,8 +24,8 @@ pipeline {
             steps {
                 script {
                     def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    docker.build("${REGISTRY}/${IMAGE_NAME}:${shortSha}")
-                    docker.tag("${REGISTRY}/${IMAGE_NAME}:${shortSha}", "${REGISTRY}/${IMAGE_NAME}:latest")
+                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${shortSha} ."
+                    sh "docker tag ${REGISTRY}/${IMAGE_NAME}:${shortSha} ${REGISTRY}/${IMAGE_NAME}:latest"
                 }
             }
         }
@@ -65,5 +64,4 @@ pipeline {
             }
         }
     }
-}
 }
