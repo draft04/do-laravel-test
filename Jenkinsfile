@@ -30,28 +30,34 @@ pipeline {
 
         stage('Login & Push') {
             steps {
-                withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID, url: "https://${REGISTRY}" ]) {
-                    docker.push("${REGISTRY}/${IMAGE_NAME}:${scm.head.abbreviatedId}")
-                    docker.push("${REGISTRY}/${IMAGE_NAME}:latest")
+                script {
+                    def shortSha = scm.head.abbreviatedId
+                    withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID, url: "https://${REGISTRY}" ]) {
+                        docker.push("${REGISTRY}/${IMAGE_NAME}:${shortSha}")
+                        docker.push("${REGISTRY}/${IMAGE_NAME}:latest")
+                    }
                 }
             }
         }
 
         stage('Deploy to Droplet') {
             steps {
-                withCredentials([sshUserPrivateKey(credentialsId: DO_SSH_KEY_ID, keyFileVariable: 'key')]) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no -i ${key} root@${DROPLET_IP} \
-                            "docker pull ${REGISTRY}/${IMAGE_NAME}:${scm.head.abbreviatedId} && \
-                             docker stop hello || true && docker rm hello || true && \
-                             docker run -d --name hello -p 80:80 \
-                                -e APP_ENV=production \
-                                -e APP_KEY=${APP_KEY} \
-                                -e BUILD_SHA=${scm.head.abbreviatedId} \
-                                -e BUILD_AT=$(date) \
-                                --restart unless-stopped \
-                                ${REGISTRY}/${IMAGE_NAME}:${scm.head.abbreviatedId}"
-                    '''
+                script {
+                    def shortSha = scm.head.abbreviatedId
+                    withCredentials([sshUserPrivateKey(credentialsId: DO_SSH_KEY_ID, keyFileVariable: 'key')]) {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no -i ${key} root@${DROPLET_IP} \
+                                "docker pull ${REGISTRY}/${IMAGE_NAME}:${shortSha} && \
+                                 docker stop hello || true && docker rm hello || true && \
+                                 docker run -d --name hello -p 80:80 \
+                                    -e APP_ENV=production \
+                                    -e APP_KEY=${APP_KEY} \
+                                    -e BUILD_SHA=${shortSha} \
+                                    -e BUILD_AT=$(date) \
+                                    --restart unless-stopped \
+                                    ${REGISTRY}/${IMAGE_NAME}:${shortSha}"
+                        '''
+                    }
                 }
             }
         }
