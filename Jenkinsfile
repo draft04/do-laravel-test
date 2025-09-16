@@ -36,8 +36,8 @@ pipeline {
                 script {
                     def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
                     withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID, url: "https://${REGISTRY}" ]) {
-                        docker.push("${REGISTRY}/${IMAGE_NAME}:${shortSha}")
-                        docker.push("${REGISTRY}/${IMAGE_NAME}:latest")
+                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:${shortSha}"
+                        sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
                     }
                 }
             }
@@ -65,4 +65,5 @@ pipeline {
             }
         }
     }
+}
 }
