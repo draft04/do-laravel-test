@@ -1,6 +1,9 @@
 
 pipeline {
     agent any
+    tools {
+        docker 'docker-latest'
+    }
 
     environment {
         REGISTRY = 'draft04' // Docker Hub or DOCR
