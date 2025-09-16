@@ -21,7 +21,7 @@ pipeline {
         stage('Build Image') {
             steps {
                 script {
-                    def shortSha = scm.head.abbreviatedId
+                    def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
                     docker.build("${REGISTRY}/${IMAGE_NAME}:${shortSha}")
                     docker.tag("${REGISTRY}/${IMAGE_NAME}:${shortSha}", "${REGISTRY}/${IMAGE_NAME}:latest")
                 }
@@ -31,7 +31,7 @@ pipeline {
         stage('Login & Push') {
             steps {
                 script {
-                    def shortSha = scm.head.abbreviatedId
+                    def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
                     withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID, url: "https://${REGISTRY}" ]) {
                         docker.push("${REGISTRY}/${IMAGE_NAME}:${shortSha}")
                         docker.push("${REGISTRY}/${IMAGE_NAME}:latest")
@@ -43,7 +43,7 @@ pipeline {
         stage('Deploy to Droplet') {
             steps {
                 script {
-                    def shortSha = scm.head.abbreviatedId
+                    def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
                     withCredentials([sshUserPrivateKey(credentialsId: DO_SSH_KEY_ID, keyFileVariable: 'key')]) {
                         sh '''
                             ssh -o StrictHostKeyChecking=no -i ${key} root@${DROPLET_IP} \
