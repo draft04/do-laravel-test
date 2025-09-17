@@ -545,6 +545,149 @@ docker logs hello
 docker stats hello --no-stream
 ```
 
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              DEVELOPMENT ENVIRONMENT                            │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────────┐  │
+│  │   Developer     │    │   Git Repository │    │      Local Machine          │  │
+│  │                 │───▶│   (GitHub/etc)   │    │  ┌─────────────────────────┐ │  │
+│  │  Code Changes   │    │                 │    │  │    SSH Keys             │ │  │
+│  │  Git Push       │    │  - Laravel App  │    │  │  ~/.ssh/jenkins_key     │ │  │
+│  └─────────────────┘    │  - Dockerfile   │    │  │  ~/.ssh/jenkins_key.pub │ │  │
+│                          │  - Jenkinsfile  │    │  └─────────────────────────┘ │  │
+│                          └─────────────────┘    └─────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Git Webhook/Poll
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                CI/CD PIPELINE                                   │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        Jenkins Container                                    │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐ │ │
+│  │  │   Stage 1:      │  │   Stage 2:      │  │      Stage 3:               │ │ │
+│  │  │   Checkout      │─▶│   Build Image   │─▶│   Login & Push              │ │ │
+│  │  │                 │  │                 │  │                             │ │ │
+│  │  │ - Git clone     │  │ - docker build  │  │ - Docker Hub login          │ │ │
+│  │  │ - Get commit    │  │ - Tag with SHA  │  │ - Push image:tag            │ │ │
+│  │  │   SHA           │  │ - Tag latest    │  │ - Push image:latest         │ │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │ │
+│  │                                                           │                 │ │
+│  │  ┌─────────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │                        Stage 4: Deploy                                 │ │ │
+│  │  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │ │ │
+│  │  │  │   SSH Connect   │─▶│   Pull Image    │─▶│   Run Container         │ │ │ │
+│  │  │  │                 │  │                 │  │                         │ │ │ │
+│  │  │  │ - Use SSH key   │  │ - docker pull   │  │ - docker run -d         │ │ │ │
+│  │  │  │ - Connect as    │  │ - Get latest    │  │ - Port 80:80            │ │ │ │
+│  │  │  │   deploy user   │  │   image         │  │ - Auto restart          │ │ │ │
+│  │  │  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │ │ │
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                   │
+│  Docker Socket Mount: /var/run/docker.sock:/var/run/docker.sock                  │
+│  Port: 8081:8080 | Group: --group-add $DOCKER_GID                               │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ SSH Connection
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            DOCKER HUB REGISTRY                                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                        draft04/laravel-test                                 │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐ │ │
+│  │  │   Image Tags    │  │   Image Layers  │  │      Metadata               │ │ │
+│  │  │                 │  │                 │  │                             │ │ │
+│  │  │ - latest        │  │ - PHP 8.2       │  │ - Build timestamp           │ │ │
+│  │  │ - commit-sha    │  │ - Apache        │  │ - Git commit SHA            │ │ │
+│  │  │ - build-123     │  │ - Laravel app   │  │ - Environment vars          │ │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Docker Pull
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          PRODUCTION ENVIRONMENT                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │                      DigitalOcean Droplet                                   │ │
+│  │                         Ubuntu 24.04                                       │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐ │ │
+│  │  │   Deploy User   │  │   Docker Engine │  │    Laravel Container        │ │ │
+│  │  │                 │  │                 │  │                             │ │ │
+│  │  │ - Non-root      │  │ - Auto-start    │  │ - Name: hello               │ │ │
+│  │  │ - Docker access │  │ - Live restore  │  │ - Port: 80:80               │ │ │
+│  │  │ - SSH keys      │  │ - Container     │  │ - Auto restart              │ │ │
+│  │  │   authorized    │  │   management    │  │ - Environment vars          │ │ │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                   │
+│  IP: YOUR_DROPLET_IP                                                             │
+│  Access: http://YOUR_DROPLET_IP/api/hello                                        │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                DATA FLOW                                        │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1. Developer pushes code to Git repository                                     │
+│  2. Jenkins detects changes (webhook/polling)                                   │
+│  3. Jenkins pulls code and builds Docker image                                  │
+│  4. Jenkins pushes image to Docker Hub registry                                 │
+│  5. Jenkins SSH to droplet as deploy user                                       │
+│  6. Droplet pulls latest image from Docker Hub                                  │
+│  7. Droplet stops old container and starts new one                              │
+│  8. Application is live and accessible via HTTP                                 │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                              SECURITY LAYERS                                    │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  • SSH Key Authentication (jenkins_key)                                         │
+│  • Non-root deployment user (deploy)                                            │
+│  • Docker Hub private registry access                                           │
+│  • Jenkins credentials management                                               │
+│  • Container isolation and restart policies                                     │
+│  • Docker group permissions (--group-add $DOCKER_GID)                          │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Component Details
+
+### Jenkins Container
+- **Base Image**: jenkins/jenkins:lts-jdk17
+- **Docker CLI**: Installed for container operations
+- **Mounted Volumes**: Docker socket, SSH keys, Jenkins home
+- **Port**: 8081 (host) → 8080 (container)
+- **Permissions**: Docker group access via --group-add
+
+### DigitalOcean Droplet
+- **OS**: Ubuntu 24.04
+- **Users**: root (setup), deploy (runtime)
+- **Docker**: Latest CE with auto-restart configuration
+- **Network**: Public IP with HTTP/SSH access
+
+### Laravel Application
+- **Framework**: Laravel 11
+- **Runtime**: PHP 8.2 + Apache
+- **API Endpoint**: `/api/hello`
+- **Container**: Auto-restart, port 80 exposed
+
+### Security
+- SSH key-based authentication
+- Non-privileged deployment user
+- Container isolation
+- Credential management in Jenkins
+
 ## Troubleshooting
 
 ### Common Issues
