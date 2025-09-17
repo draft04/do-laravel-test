@@ -46,9 +46,9 @@ pipeline {
             steps {
                 script {
                     def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    withCredentials([sshUserPrivateKey(credentialsId: DO_SSH_KEY_ID, keyFileVariable: 'key')]) {
+                    sshagent([DO_SSH_KEY_ID]) {
                         sh '''
-                            ssh -o StrictHostKeyChecking=no -i ${key} root@${DROPLET_IP} \
+                            ssh -o StrictHostKeyChecking=no root@${DROPLET_IP} \
                                 "docker pull ${REGISTRY}/${IMAGE_NAME}:${shortSha} && \
                                  docker stop hello || true && docker rm hello || true && \
                                  docker run -d --name hello -p 80:80 \
