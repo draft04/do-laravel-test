@@ -5,7 +5,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY = 'draft04' // Docker Hub or DOCR
+        REGISTRY = 'draft04' // Docker Hub username
         IMAGE_NAME = 'laravel-test'
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-creds'
         DO_SSH_KEY_ID = 'do-ssh-key'
@@ -34,7 +34,7 @@ pipeline {
             steps {
                 script {
                     def shortSha = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID, url: "https://${REGISTRY}" ]) {
+                    withDockerRegistry([ credentialsId: DOCKERHUB_CREDENTIALS_ID ]) {
                         sh "docker push ${REGISTRY}/${IMAGE_NAME}:${shortSha}"
                         sh "docker push ${REGISTRY}/${IMAGE_NAME}:latest"
                     }
