@@ -96,6 +96,9 @@ sudo usermod -aG docker $USER
 #### Run Jenkins with Docker Support
 
 ```bash
+# Get Docker group GID
+DOCKER_GID=$(getent group docker | cut -d: -f3)
+
 # Create Jenkins with Docker CLI pre-installed
 docker run -d \
   -p 8081:8080 \
@@ -103,6 +106,7 @@ docker run -d \
   -v jenkins_home:/var/jenkins_home \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v ~/.ssh:/var/jenkins_home/.ssh:ro \
+  --group-add $DOCKER_GID \
   --name jenkins \
   jenkins/jenkins:lts-jdk17
 
@@ -139,11 +143,16 @@ USER jenkins
 ```bash
 # Build and run custom image
 docker build -t jenkins-with-docker .
+
+# Get Docker group GID
+DOCKER_GID=$(getent group docker | cut -d: -f3)
+
 docker run -d \
   -p 8081:8080 \
   -p 50000:50000 \
   -v jenkins_home:/var/jenkins_home \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add $DOCKER_GID \
   --name jenkins \
   jenkins-with-docker
 ```
@@ -264,7 +273,10 @@ ssh -i ~/.ssh/jenkins_key deploy@YOUR_DROPLET_IP "echo 'SSH connection successfu
 3. **Laravel App Key**
    - Add "Secret text"
    - ID: `laravel-app-key`
-   - Secret: Generate with `php artisan key:generate --show`
+   - Secret: Generate with Docker command:
+   ```bash
+   docker run --rm -v $(pwd):/app -w /app php:8.2-fpm sh -c "apt-get update && apt-get install -y unzip libzip-dev && docker-php-ext-install zip && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && composer install && php artisan key:generate --show"
+   ```
 
 #### Configure Pipeline
 
