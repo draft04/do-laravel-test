@@ -9,7 +9,7 @@ pipeline {
         IMAGE_NAME = 'laravel-test'
         DOCKERHUB_CREDENTIALS_ID = 'dockerhub-creds'
         DO_SSH_KEY_ID = 'do-ssh-key'
-        DROPLET_IP = 'your-droplet-ip'
+        DROPLET_IP = '157.230.175.98'
         APP_KEY = credentials('laravel-app-key')
     }
 
